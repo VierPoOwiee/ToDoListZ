@@ -1,0 +1,809 @@
+/* ============================================================
+   Todo - tampilan kalender
+   Dasar: Notion (permukaan putih, garis tipis, hover halus).
+   Dari mechay.vercel.app: sidebar gelap hangat, copy santai.
+   Dari two26.studio: judul bulan besar, rapat.
+   ============================================================ */
+
+:root {
+  --ink: #121110;
+  --on-ink: #ece9e3;
+  --on-ink-muted: #8d8981;
+
+  --paper: #ffffff;
+  --wash: #f7f6f4;
+  --line: #e8e6e2;
+  --line-strong: #d3d0ca;
+  --text: #1d1c1a;
+  --muted: #77736c;
+
+  --accent: #2747f0;
+  --accent-strong: #1b36c4;
+  --accent-soft: #ebeefe;
+  --late: #c73a20;
+  --late-soft: #fdede9;
+
+  --display: "Archivo", "Arial Narrow", Arial, sans-serif;
+  --body: "Instrument Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+
+  
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+
+body {
+  background: var(--paper);
+  color: var(--text);
+  font-family: var(--body);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+[hidden] { display: none !important; }
+
+svg path { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* ---------- Layout ---------- */
+
+.layout { display: grid; grid-template-columns: 272px minmax(0, 1fr); min-height: 100vh; }
+
+/* ---------- Sidebar ---------- */
+
+.sidebar {
+  background: var(--ink);
+  color: var(--on-ink);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  padding: 28px 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  overflow-y: auto;
+}
+
+.brand { display: flex; align-items: center; gap: 10px; padding: 0 10px; color: var(--on-ink); }
+.brand-mark path { stroke: var(--ink); stroke-width: 3; }
+
+.brand-name {
+  font-family: var(--display);
+  font-stretch: 85%;
+  font-weight: 800;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+}
+
+.cats, .cat-items { display: flex; flex-direction: column; gap: 2px; }
+
+.cat {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  color: var(--on-ink-muted);
+  text-align: left;
+  transition: background 0.15s, color 0.15s;
+}
+
+.cat:hover { background: rgba(255, 255, 255, 0.06); color: var(--on-ink); }
+.cat.is-active { background: rgba(255, 255, 255, 0.1); color: #fff; }
+.cat-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cat-count { font-size: 13px; font-variant-numeric: tabular-nums; color: var(--on-ink-muted); transition: opacity 0.15s; }
+.cat.is-active .cat-count { color: var(--on-ink); }
+.cat.is-drop-target { background: var(--accent-soft); color: var(--accent-strong); }
+.cat.is-drop-target .cat-count { color: var(--accent-strong); }
+
+/* Aksi kategori: pembungkus agar tombol pensil/hapus tidak bersarang di tombol kategori. */
+.cat-item { position: relative; display: flex; }
+.cat-item .cat { flex: 1; min-width: 0; }
+
+.cat-actions {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  display: flex;
+  gap: 2px;
+  transform: translateY(-50%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+}
+
+.cat-item:hover .cat-actions,
+.cat-item:focus-within .cat-actions,
+.cat-item.is-confirm .cat-actions { opacity: 1; pointer-events: auto; }
+
+.cat-item:hover .cat-count,
+.cat-item:focus-within .cat-count,
+.cat-item.is-confirm .cat-count { opacity: 0; }
+
+.cat-act {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 24px;
+  min-width: 24px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  color: var(--on-ink-muted);
+  transition: background 0.15s, color 0.15s;
+}
+
+.cat-act:hover { background: rgba(255, 255, 255, 0.12); color: #fff; }
+.cat-act-del:hover,
+.cat-item.is-confirm .cat-act-del { background: rgba(199, 58, 32, 0.25); color: #fff; }
+
+.cat-act-del .del-label { display: none; font-size: 12px; font-weight: 600; }
+.cat-item.is-confirm .cat-act-del { padding: 0 6px; }
+.cat-item.is-confirm .cat-act-del svg { display: none; }
+.cat-item.is-confirm .cat-act-del .del-label { display: inline; }
+
+/* Input rename menggantikan tombol kategori di tempat yang sama. */
+.cat-rename {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 10px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  outline: 0;
+  color: var(--on-ink);
+  font-size: 15px;
+}
+
+.cat-rename:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(39, 71, 240, 0.35); }
+.cat-item.is-editing .cat-actions { display: none; }
+
+/* Di layar sentuh tidak ada hover, jadi ikon selalu terlihat. */
+@media (hover: none) {
+  .cat-actions { opacity: 1; pointer-events: auto; }
+  .cat-item .cat { padding-right: 56px; }
+}
+
+.cat-add {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px 2px 10px;
+  border: 1px dashed rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.cat-add:focus-within { border-style: solid; border-color: rgba(255, 255, 255, 0.4); background: rgba(255, 255, 255, 0.04); }
+
+.cat-add input {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 0;
+  background: transparent;
+  border: 0;
+  outline: 0;
+  color: var(--on-ink);
+  font-size: 15px;
+}
+
+.cat-add input::placeholder { color: var(--on-ink-muted); }
+
+.cat-add button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  color: var(--on-ink-muted);
+}
+
+.cat-add button:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
+
+/* ---------- Konten ---------- */
+
+.main { min-width: 0; padding: 48px clamp(20px, 4vw, 64px) 80px; }
+.doc { max-width: 1120px; margin: 0 auto; }
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 28px;
+}
+
+.title {
+  margin: 0;
+  overflow: hidden;
+  font-family: var(--display);
+  font-stretch: 68%;
+  font-weight: 850;
+  font-size: clamp(52px, 8.5vw, 108px);
+  line-height: 0.92;
+  letter-spacing: -0.015em;
+  text-transform: uppercase;
+}
+
+.title .t { display: inline-block; animation: rise 0.65s var(--ease) both; }
+.title .yr { margin-left: 0.18em; color: #bdb9b1; }
+
+@keyframes rise {
+  from { transform: translateY(105%); }
+  to { transform: translateY(0); }
+}
+
+.summary { margin: 12px 0 0; color: var(--muted); font-size: 17px; }
+.summary b { color: var(--late); font-weight: 600; }
+
+.month-nav { display: flex; align-items: center; gap: 8px; padding-bottom: 6px; }
+
+.round, .pill {
+  height: 40px;
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
+  color: var(--text);
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.round { display: grid; place-items: center; width: 40px; border-radius: 50%; }
+.pill { padding: 0 18px; border-radius: 999px; font-weight: 500; }
+.round:hover, .pill:hover { background: var(--wash); border-color: var(--text); }
+
+.board {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 36px;
+  align-items: start;
+}
+
+/* ---------- Kalender ---------- */
+
+.cal-week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.cal-week span { padding: 0 8px 8px; font-size: 13px; font-weight: 500; color: var(--muted); }
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  border-top: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+  border-radius: 4px 0 0 0;
+}
+
+.day {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 108px;
+  padding: 8px;
+  background: var(--paper);
+  border: 0;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.day:hover { background: var(--wash); }
+.day.is-other { background: #fcfbfa; }
+.day.is-other .num { color: #b9b5ad; }
+
+.day.is-selected { z-index: 1; background: var(--paper); box-shadow: inset 0 0 0 2px var(--ink); }
+.day.is-drop-target { background: var(--accent-soft); box-shadow: inset 0 0 0 2px var(--accent); }
+
+.num {
+  display: grid;
+  place-items: center;
+  align-self: flex-start;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 4px;
+  border-radius: 13px;
+  font-size: 14px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.day.is-today .num { background: var(--accent); color: #fff; }
+
+.chips { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+
+.chip {
+  display: block;
+  padding: 2px 6px;
+  overflow: hidden;
+  background: var(--accent-soft);
+  border-radius: 4px;
+  color: var(--accent-strong);
+  font-size: 12px;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chip.is-late { background: var(--late-soft); color: var(--late); }
+.chip.is-done { background: var(--wash); color: #a8a49c; text-decoration: line-through; }
+.more { padding-left: 6px; font-size: 12px; color: var(--muted); }
+
+.dots { display: none; gap: 3px; flex-wrap: wrap; }
+.dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+.dot.is-late { background: var(--late); }
+.dot.is-done { background: var(--line-strong); }
+
+/* ---------- Panel hari ---------- */
+
+.day-panel {
+  position: sticky;
+  top: 24px;
+  padding: 22px 20px 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+}
+
+.day-title { margin: 0; font-size: 22px; font-weight: 600; line-height: 1.25; letter-spacing: -0.01em; }
+.day-sub { margin: 2px 0 16px; color: var(--muted); font-size: 15px; }
+
+/* ============================================================
+   FITUR   : Cincin progres di panel hari
+   FUNGSI  : Kepala panel hari jadi dua sisi: judul dan sub di kiri,
+             cincin SVG di kanan.
+   ALUR    : Dipakai renderPanel()/updateRing() di app.js; geometri
+             (viewBox, jari-jari, ketebalan, dasharray) disetel
+             setupRing() dari CONFIG, jangan lewat CSS.
+   UBAH DI SINI: Warna jalur/busur di .ring-track/.ring-bar; kecepatan
+             pengisian di transition .ring-bar; ukuran teks di .ring-text.
+   ============================================================ */
+.day-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.day-head-text { min-width: 0; }
+.day-ring { flex-shrink: 0; }
+
+.day-ring circle {
+  fill: none;
+  stroke-linecap: round;
+}
+
+.ring-track { stroke: var(--line); }
+
+.ring-bar {
+  stroke: var(--accent);
+  transition: stroke-dashoffset 0.45s var(--ease);
+}
+
+.ring-text {
+  fill: var(--text);
+  font-family: var(--body);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+/* ---------- Composer ---------- */
+
+.composer {
+  background: var(--wash);
+  border: 1px solid transparent;
+  border-radius: 12px;
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+}
+
+.composer:focus-within { background: var(--paper); border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+
+.composer-title { display: block; }
+
+.composer-title input {
+  display: block;
+  width: 100%;
+  padding: 14px 14px 8px;
+  background: transparent;
+  border: 0;
+  outline: 0;
+  font-size: 17px;
+  font-weight: 500;
+}
+
+.composer-title input::placeholder { color: #a8a49c; font-weight: 400; }
+
+/* ============================================================
+   FITUR   : Tulis tugas dengan bahasa biasa
+   FUNGSI  : Pratinjau kecil di bawah kolom judul berisi tanggal,
+             jam, dan kategori yang dikenali parser dari teks, plus
+             catatan tag yang tidak ditemukan.
+   ALUR    : renderQuickPreview() di app.js mengisi #quickPreview;
+             class is-late menandai waktu yang sudah lewat.
+   UBAH DI SINI: Warna lewat var(--accent-soft)/var(--late-soft);
+             ukuran dan jarak di bawah ini.
+   ============================================================ */
+.quick-preview {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 14px 8px;
+  padding: 5px 8px 5px 10px;
+  background: var(--accent-soft);
+  border-radius: 8px;
+  color: var(--accent-strong);
+  font-size: 13.5px;
+}
+
+.quick-preview.is-late { background: var(--late-soft); color: var(--late); }
+
+.quick-texts { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+
+/* Catatan "Kategori #xyz tidak ditemukan". */
+.quick-note { color: var(--late); font-size: 12px; }
+
+.quick-x {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  color: inherit;
+  opacity: 0.65;
+  transition: opacity 0.15s, background 0.15s;
+}
+
+.quick-x:hover { opacity: 1; background: var(--paper); }
+
+.composer-meta { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; padding: 4px 10px 12px 14px; }
+
+.field { display: flex; flex-direction: column; gap: 3px; flex: 1 1 110px; min-width: 0; }
+.field-name { font-size: 12.5px; color: var(--muted); }
+
+.field input,
+.field select {
+  width: 100%;
+  height: 36px;
+  padding: 0 8px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 14.5px;
+}
+
+.field input:focus,
+.field select:focus { outline: 0; border-color: var(--accent); }
+
+.btn-add {
+  flex: 1 1 100%;
+  height: 38px;
+  background: var(--accent);
+  border: 0;
+  border-radius: 999px;
+  color: #fff;
+  font-weight: 600;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.btn-add:hover { background: var(--accent-strong); }
+.btn-add:active { transform: scale(0.98); }
+
+/* ---------- Status ---------- */
+
+.status { margin-bottom: 16px; font-size: 15px; color: var(--muted); }
+.status:empty { display: none; }
+
+.status.is-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--late-soft);
+  border-radius: 10px;
+  color: var(--late);
+}
+
+.status.is-error button {
+  padding: 4px 12px;
+  background: transparent;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  color: inherit;
+  font-size: 14px;
+}
+
+/* ---------- Daftar tugas ---------- */
+
+.tasks { list-style: none; margin: 0; padding: 0; }
+.tasks:not(:empty) { margin-top: 12px; }
+
+.task {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 4px 12px 2px;
+  border-bottom: 1px solid var(--line);
+  transition: opacity 0.2s, transform 0.2s var(--ease);
+}
+
+.task:last-child { border-bottom: 0; }
+.task.is-new { animation: appear 0.3s var(--ease); }
+.task.is-removing { opacity: 0; transform: translateX(12px); }
+.task, .chip { cursor: grab; }
+.task.is-dragging, .chip.is-dragging { opacity: 0.45; cursor: grabbing; }
+
+@keyframes appear {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: none; }
+}
+
+.check {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+  padding: 0;
+  background: var(--paper);
+  border: 1.5px solid var(--line-strong);
+  border-radius: 6px;
+  color: transparent;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+}
+
+.check:hover { border-color: var(--accent); }
+.check:active { transform: scale(0.9); }
+.check svg path { stroke-width: 2.2; stroke-dasharray: 16; stroke-dashoffset: 16; transition: stroke-dashoffset 0.25s var(--ease) 0.05s; }
+
+.task.is-done .check { background: var(--accent); border-color: var(--accent); color: #fff; }
+.task.is-done .check svg path { stroke-dashoffset: 0; }
+
+.task-main { flex: 1; min-width: 0; }
+
+.task-title { margin: 0; font-size: 16px; font-weight: 500; line-height: 1.4; overflow-wrap: anywhere; }
+.task.is-done .task-title { color: #a8a49c; text-decoration: line-through; text-decoration-color: #c9c5bd; }
+
+.task-meta { display: flex; flex-wrap: wrap; gap: 2px 12px; margin: 2px 0 0; font-size: 13.5px; color: var(--muted); }
+.task-meta:empty { display: none; }
+
+.meta-due { display: inline-flex; align-items: center; gap: 5px; font-variant-numeric: tabular-nums; }
+.meta-due svg path, .meta-due svg circle { stroke-width: 1.5; }
+.meta-due.is-overdue { color: var(--late); font-weight: 500; }
+.task.is-done .meta-due.is-overdue { color: var(--muted); font-weight: 400; }
+
+.del {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  height: 28px;
+  padding: 0 7px;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  color: var(--muted);
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s, color 0.15s;
+}
+
+.task:hover .del, .task:focus-within .del, .task.is-confirm .del { opacity: 1; }
+@media (hover: none) { .del { opacity: 0.7; } }
+
+.del:hover { background: var(--late-soft); color: var(--late); }
+.del-label { display: none; font-size: 13.5px; font-weight: 600; }
+.task.is-confirm .del { background: var(--late-soft); color: var(--late); }
+.task.is-confirm .del-label { display: inline; }
+
+.empty { padding: 28px 4px 16px; }
+.empty-title { margin: 0; font-size: 17px; font-weight: 600; }
+.empty-sub { margin: 2px 0 0; color: var(--muted); font-size: 15px; }
+
+/* ---------- Toast ---------- */
+
+.toast-wrap {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(360px, calc(100vw - 40px));
+}
+
+.toast {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 14px 16px;
+  background: var(--ink);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(18, 17, 16, 0.25);
+  color: var(--on-ink);
+  animation: toast-in 0.3s var(--ease);
+  transition: opacity 0.25s, transform 0.25s;
+}
+
+.toast b { color: #fff; font-weight: 600; }
+.toast span { font-size: 14.5px; color: var(--on-ink-muted); overflow-wrap: anywhere; }
+.toast.is-out { opacity: 0; transform: translateY(8px); }
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ============================================================
+   FITUR   : Konfeti saat semua tugas satu hari selesai
+   FUNGSI  : Layer layar penuh tempat potongan konfeti jatuh dari
+             atas ke bawah sambil berputar dan memudar.
+   ALUR    : launchConfetti() di app.js membuat span.confetti di dalam
+             layer ini dengan custom property acak; tiap potongan
+             menghapus dirinya saat animationend.
+   UBAH DI SINI: Jumlah/warna/durasi/ukuran lewat CONFIG di app.js;
+             arah geser dan putaran lewat --dx/--rot di bawah.
+   ============================================================ */
+#confettiLayer {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 40; /* di bawah toast (z-index 50) */
+}
+
+.confetti {
+  position: absolute;
+  top: -4vh; /* mulai di atas layar, belum terlihat */
+  left: var(--x);
+  width: var(--w);
+  height: var(--h);
+  background: var(--c);
+  animation: confetti-fall var(--dur) linear var(--delay) forwards;
+}
+
+/* Satu keyframes dipakai semua potongan; nilainya beda-beda lewat
+   custom property yang diisi launchConfetti() di app.js. */
+@keyframes confetti-fall {
+  from { transform: translate3d(0, 0, 0) rotate(0deg); }
+  70% { opacity: 1; }
+  to {
+    transform: translate3d(var(--dx), 104vh, 0) rotate(var(--rot));
+    opacity: 0;
+  }
+}
+
+/* ============================================================
+   FITUR   : Pencarian tugas
+   FUNGSI  : Kolom cari di atas kalender beserta daftar hasilnya
+             yang muncul sebagai dropdown di bawah kolom.
+   ALUR    : Diisi renderSearchResults() di app.js; klik di luar
+             .search (diatur di app.js) menyembunyikan daftarnya.
+   UBAH DI SINI: Warna lewat variabel yang sudah ada; ukuran,
+             jarak, dan tinggi maksimum daftar di bawah ini.
+   ============================================================ */
+.search {
+  position: relative;
+  max-width: 480px;
+  margin-bottom: 20px;
+}
+
+.search input {
+  width: 100%;
+  height: 42px;
+  padding: 0 14px;
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  color: var(--text);
+  font-size: 15px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.search input::placeholder { color: var(--muted); }
+
+/* Fokus kolom sama seperti .composer: garis aksen + bayangan lembut. */
+.search input:focus {
+  outline: 0;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-soft);
+}
+
+/* Daftar hasil: dropdown di bawah kolom, di atas kalender. */
+#searchResults {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 30; /* di atas kalender, di bawah konfeti (40) dan toast (50) */
+  max-height: 320px;
+  overflow-y: auto;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(18, 17, 16, 0.12);
+}
+
+.search-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 10px 14px;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+}
+
+.search-item:last-child { border-bottom: 0; }
+.search-item:hover, .search-item:focus-visible { background: var(--accent-soft); }
+
+.search-title { font-size: 15px; font-weight: 500; line-height: 1.4; overflow-wrap: anywhere; }
+.search-item.is-done .search-title { color: var(--muted); text-decoration: line-through; }
+
+/* Bagian judul yang cocok kata kunci; tetap terbaca di atas latar
+   --accent-soft saat item di-hover. */
+.search-title mark { background: transparent; color: var(--accent-strong); font-weight: 600; }
+
+.search-meta { font-size: 13px; color: var(--muted); }
+
+.search-empty, .search-more { margin: 0; padding: 12px 14px; font-size: 14px; color: var(--muted); }
+
+/* ---------- Responsif ---------- */
+
+@media (max-width: 1100px) {
+  .board { grid-template-columns: minmax(0, 1fr); }
+  .day-panel { position: static; max-height: none; overflow: visible; }
+}
+
+@media (max-width: 860px) {
+  .layout { display: block; }
+
+  .sidebar { position: static; height: auto; padding: 18px 16px; gap: 14px; overflow: visible; }
+  .cats { flex-direction: row; overflow-x: auto; gap: 6px; padding-bottom: 2px; scrollbar-width: none; }
+  .cats::-webkit-scrollbar { display: none; }
+  .cat-items { display: contents; }
+  .cat-item { flex-shrink: 0; }
+  .cat { width: auto; flex-shrink: 0; gap: 8px; border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 999px; }
+  .cat.is-active { border-color: transparent; }
+
+  .main { padding: 32px 14px 72px; }
+  .head { margin-bottom: 20px; }
+  .title .yr { display: block; margin-left: 0; font-size: 0.5em; line-height: 1; }
+
+  .day { min-height: 58px; padding: 5px; align-items: center; }
+  .num { align-self: center; }
+  .chips { display: none; }
+  .dots { display: flex; justify-content: center; }
+  .cal-week span { padding: 0 0 6px; text-align: center; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}

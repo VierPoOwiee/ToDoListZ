@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IrengTodo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..900&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232747F0'/%3E%3Cpath d='M9 16.5l4.5 4.5L23 11' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+</head>
+<body>
+  <div class="layout">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="brand">
+        <svg class="brand-mark" viewBox="0 0 32 32" width="26" height="26" aria-hidden="true">
+          <rect width="32" height="32" rx="8" fill="currentColor"/>
+          <path d="M9 16.5l4.5 4.5L23 11"/>
+        </svg>
+        <span class="brand-name">IrengTodo</span>
+      </div>
+
+      <nav class="cats" id="catList" aria-label="Kategori">
+        <button class="cat is-active" data-cat="all" type="button">
+          <span class="cat-name">Semua</span>
+          <span class="cat-count" data-count="all"></span>
+        </button>
+        <div class="cat-items" id="catItems"></div>
+        <button class="cat cat-uncat" id="uncatFilter" data-cat="uncat" type="button" hidden>
+          <span class="cat-name">Tanpa kategori</span>
+          <span class="cat-count" data-count="uncat"></span>
+        </button>
+      </nav>
+
+      <form class="cat-add" id="catForm">
+        <input type="text" id="catInput" placeholder="Kategori baru" maxlength="100" autocomplete="off" aria-label="Nama kategori baru">
+        <button type="submit" aria-label="Tambah kategori">
+          <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg>
+        </button>
+      </form>
+    </aside>
+
+    <!-- Konten -->
+    <main class="main">
+      <div class="doc">
+
+        <header class="head">
+          <div class="head-text">
+            <h1 class="title" id="pageTitle"><span class="t">November</span></h1>
+            <p class="summary" id="summary"></p>
+          </div>
+          <div class="month-nav">
+            <button class="round" id="prevMonth" type="button" aria-label="Bulan sebelumnya">
+              <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M10 3L5 8l5 5"/></svg>
+            </button>
+            <button class="pill" id="todayBtn" type="button">Hari ini</button>
+            <button class="round" id="nextMonth" type="button" aria-label="Bulan berikutnya">
+              <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M6 3l5 5-5 5"/></svg>
+            </button>
+          </div>
+        </header>
+
+        <!-- ============================================================
+             FITUR   : Pencarian tugas
+             FUNGSI  : Kolom cari di atas kalender; hasilnya muncul
+                       sebagai daftar di bawah kolom.
+             ALUR    : Event di app.js (input/focus/Escape/klik luar)
+                       mengisi #searchResults lewat renderSearchResults();
+                       klik satu hasil memindahkan kalender ke tanggalnya.
+             UBAH DI SINI: Placeholder di sini; tampilan lewat .search
+                       dan #searchResults di style.css.
+             ============================================================ -->
+        <div class="search">
+          <input type="search" id="searchInput" placeholder="Cari tugas, mis. rapat" maxlength="100" autocomplete="off" aria-label="Cari tugas">
+          <div id="searchResults" hidden></div>
+        </div>
+
+        <div class="status" id="status" role="status" aria-live="polite"></div>
+
+        <div class="board">
+
+          <!-- Kalender -->
+          <section class="cal" aria-label="Kalender">
+            <div class="cal-week" id="calWeek"></div>
+            <div class="cal-grid" id="calGrid"></div>
+          </section>
+
+          <!-- Panel hari terpilih -->
+          <aside class="day-panel" aria-label="Tugas pada hari terpilih">
+            <div class="day-head">
+              <div class="day-head-text">
+                <h2 class="day-title" id="dayTitle"></h2>
+                <p class="day-sub" id="daySub"></p>
+              </div>
+
+              <!-- ============================================================
+                   FITUR   : Cincin progres di panel hari
+                   FUNGSI  : Tempat cincin SVG yang menunjukkan tugas selesai
+                             dibanding total tugas pada hari terpilih.
+                   ALUR    : Diisi oleh updateRing() di app.js; ukurannya
+                             disetel setupRing() dari CONFIG saat halaman dibuka.
+                   UBAH DI SINI: Ukuran lewat RING_RADIUS dan RING_STROKE di
+                             CONFIG app.js; warna lewat .ring-track dan
+                             .ring-bar di style.css.
+                   ============================================================ -->
+              <svg class="day-ring" id="dayRing" role="img" aria-label="" hidden>
+                <circle class="ring-track" id="ringTrack"/>
+                <circle class="ring-bar" id="ringBar"/>
+                <text class="ring-text" id="ringText" text-anchor="middle" dy="0.32em"></text>
+              </svg>
+            </div>
+
+            <form class="composer" id="taskForm">
+              <label class="composer-title">
+                <span class="sr-only">Judul tugas</span>
+                <input type="text" id="taskInput" placeholder="Coba: Rapat #belanja besok jam 3 sore" maxlength="255" autocomplete="off">
+              </label>
+
+              <!-- ============================================================
+                   FITUR   : Tulis tugas dengan bahasa biasa
+                   FUNGSI  : Pratinjau tanggal, jam, dan kategori yang
+                             dikenali parser dari teks kolom judul.
+                   ALUR    : Diisi renderQuickPreview() di app.js saat
+                             pengguna mengetik; tombol x mengabaikan hasil
+                             parser untuk teks ini.
+                   UBAH DI SINI: Tampilan lewat .quick-preview di style.css.
+                   ============================================================ -->
+              <div class="quick-preview" id="quickPreview" aria-live="polite" hidden>
+                <div class="quick-texts">
+                  <span id="quickPreviewText"></span>
+                  <span class="quick-note" id="quickNote"></span>
+                </div>
+                <button class="quick-x" id="quickIgnoreBtn" type="button" aria-label="Abaikan tanggal, jam, dan kategori yang dikenali">
+                  <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+                </button>
+              </div>
+              <div class="composer-meta">
+                <label class="field" id="timeField">
+                  <span class="field-name">Jam</span>
+                  <input type="time" id="taskTime" required>
+                </label>
+                <label class="field">
+                  <span class="field-name">Kategori</span>
+                  <select id="taskCategory"></select>
+                </label>
+                <button class="btn-add" type="submit">Tambah tugas</button>
+              </div>
+            </form>
+
+            <ul class="tasks" id="taskList"></ul>
+
+            <div class="empty" id="empty" hidden>
+              <p class="empty-title" id="emptyTitle">Belum ada tugas.</p>
+              <p class="empty-sub">Tulis satu di kolom atas.</p>
+            </div>
+          </aside>
+
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- ============================================================
+       FITUR   : Konfeti saat semua tugas satu hari selesai
+       FUNGSI  : Layer layar penuh tempat potongan konfeti jatuh.
+       ALUR    : Diisi oleh launchConfetti() di app.js; tiap potongan
+                 menghapus dirinya sendiri saat animasinya selesai.
+       UBAH DI SINI: Letak dan z-index layer diatur di style.css.
+       ============================================================ -->
+  <div id="confettiLayer" aria-hidden="true"></div>
+
+  <div class="toast-wrap" id="toastWrap" aria-live="assertive"></div>
+
+  <template id="taskTemplate">
+    <li class="task">
+      <button class="check" type="button" aria-label="Tandai selesai" aria-pressed="false">
+        <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7"/></svg>
+      </button>
+      <div class="task-main">
+        <p class="task-title"></p>
+        <p class="task-meta"></p>
+      </div>
+      <button class="del" type="button" aria-label="Hapus tugas">
+        <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+        <span class="del-label">Hapus?</span>
+      </button>
+    </li>
+  </template>
+
+  <script src="app.js"></script>
+</body>
+</html>
